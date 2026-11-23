@@ -1,0 +1,345 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Products | VendorConnect</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .products-container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            margin-top: 25px;
+        }
+
+        .products-table th,
+        .products-table td {
+            padding: 14px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .products-table th {
+            background: #254f80;
+            color: white;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        .message {
+            margin-top: 20px;
+        }
+
+        .product-thumbnail {
+    width: 80px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.no-image {
+    width: 80px;
+    height: 70px;
+    background: #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #666;
+    border-radius: 8px;
+}
+    </style>
+</head>
+<body>
+
+    <header class="dashboard-header">
+        <h1>VendorConnect</h1>
+        <button onclick="logout()">Logout</button>
+    </header>
+
+    <main class="products-container">
+        <h2>My Products</h2>
+        <p>Manage the products you have listed.</p>
+
+        <p id="message" class="message">Loading products...</p>
+
+        <table class="products-table">
+           <thead>
+    
+    <tr>
+        <th>Image</th>
+        <th>Product Name</th>
+        <th>Category ID</th>
+        <th>Price (₹)</th>
+        <th>Stock</th>
+        <th>Description</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+            <tbody id="productsList"></tbody>
+        </table>
+
+        <a class="back-link" href="seller-dashboard.html">
+            Back to Dashboard
+        </a>
+    </main>
+
+    <script>
+        const token = sessionStorage.getItem("token");
+
+        if (!token) {
+            window.location.href = "login.html";
+        }
+
+       
+let sellerProducts = [];
+
+async function loadProducts() {
+    const message = document.getElementById("message");
+    const productsList = document.getElementById("productsList");
+
+    try {
+        const response = await fetch("/api/products/my-products", {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Unable to load products");
+        }
+
+        sellerProducts = data.products;
+        productsList.innerHTML = "";
+
+        if (sellerProducts.length === 0) {
+            message.textContent = "You have not added any products yet.";
+            return;
+        }
+
+        sellerProducts.forEach(product => {
+    const row = document.createElement("tr");
+
+    // Product image
+    const imageCell = document.createElement("td");
+
+    if (product.image_url) {
+        const img = document.createElement("img");
+        img.src = product.image_url;
+        img.alt = product.product_name;
+        img.className = "product-thumbnail";
+
+        img.onerror = function () {
+            imageCell.textContent = "No image";
+        };
+
+        imageCell.appendChild(img);
+    } else {
+        imageCell.textContent = "No image";
+    }
+
+    row.appendChild(imageCell);
+
+    // Product details
+    [
+        product.product_name,
+        product.category_id,
+        "₹" + Number(product.price).toFixed(2),
+        product.stock_quantity,
+        product.description || "-"
+    ].forEach(value => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+    });
+
+const actionCell = document.createElement("td");
+
+const editButton = document.createElement("button");
+editButton.textContent = "Edit";
+editButton.onclick = () => editProduct(product.id);
+
+const deleteButton = document.createElement("button");
+deleteButton.textContent = "Delete";
+deleteButton.style.marginLeft = "8px";
+editButton.style.padding = "8px 12px";
+editButton.style.borderRadius = "5px";
+editButton.style.cursor = "pointer";
+
+actionCell.style.whiteSpace = "nowrap";
+deleteButton.style.backgroundColor = "#dc3545";
+deleteButton.style.color = "white";
+deleteButton.style.border = "none";
+deleteButton.style.padding = "8px 12px";
+deleteButton.style.borderRadius = "5px";
+deleteButton.style.cursor = "pointer";
+deleteButton.onclick = () => deleteProduct(product.id);
+
+
+actionCell.appendChild(editButton);
+actionCell.appendChild(deleteButton);
+row.appendChild(actionCell);
+
+productsList.appendChild(row);
+}); // Closes sellerProducts.forEach()
+
+message.textContent =
+    `${sellerProducts.length} product(s) found.`;
+
+
+    } catch (error) {
+        message.textContent = error.message;
+    }
+}
+
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = "login.html";
+        }
+
+        loadProducts();
+
+
+async function editProduct(productId) {
+    const product = sellerProducts.find(
+        item => item.id === productId
+    );
+
+    if (!product) return;
+
+    const productName = prompt(
+        "Enter product name:",
+        product.product_name
+    );
+    if (productName === null) return;
+
+    const price = prompt("Enter product price:", product.price);
+    if (price === null) return;
+
+    const stock = prompt(
+        "Enter available stock:",
+        product.stock_quantity
+    );
+    if (stock === null) return;
+
+    const description = prompt(
+        "Enter product description:",
+        product.description || ""
+    );
+    if (description === null) return;
+
+    // Create a file picker for an optional replacement image
+    const imageInput = document.createElement("input");
+    imageInput.type = "file";
+    imageInput.accept = "image/jpeg,image/png,image/webp";
+
+    const formData = new FormData();
+    formData.append("product_name", productName);
+    formData.append("price", price);
+    formData.append("stock_quantity", stock);
+    formData.append("description", description);
+
+    // Upload the selected image, if one is chosen
+    const uploadProduct = async (imageFile = null) => {
+        if (imageFile) {
+            formData.append("product_image", imageFile);
+        }
+
+        try {
+            const response = await fetch(
+                `/api/products/my-products/${productId}`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: formData
+                }
+            );
+
+            const data = await response.json();
+
+            alert(data.message || "Product update completed.");
+
+            if (response.ok) {
+                loadProducts();
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Could not connect to the server.");
+        }
+    };
+
+   // Show a real file picker so the user can select an image
+const imageLabel = document.createElement("label");
+imageLabel.textContent = "Select a replacement image: ";
+imageLabel.style.display = "block";
+imageLabel.style.margin = "15px";
+
+imageInput.style.display = "block";
+imageInput.style.margin = "10px";
+
+imageLabel.appendChild(imageInput);
+document.body.appendChild(imageLabel);
+
+imageInput.addEventListener("change", async function () {
+    if (imageInput.files.length > 0) {
+        await uploadProduct(imageInput.files[0]);
+        imageLabel.remove();
+    }
+});
+
+}
+
+
+async function deleteProduct(productId) {
+    const confirmDelete = confirm(
+        "Are you sure you want to delete this product?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+        const response = await fetch(
+            `/api/products/my-products/${productId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        alert(data.message);
+
+        if (response.ok) {
+            loadProducts();
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert("Could not connect to the server.");
+    }
+}
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorConnect | Login</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="login-container">
+        <h1>VendorConnect</h1>
+        <h2>Welcome Back</h2>
+        <p>Login to your account</p>
+
+        <form id="loginForm">
+            <label>Email Address</label>
+            <input type="email" id="email" required>
+
+            <label>Password</label>
+            <input type="password" id="password" required>
+
+            <button type="submit">Login</button>
+        </form>
+
+        <p id="loginMessage"></p>
+
+        <p>Don't have an account?
+            <a href="index.html">Register</a>
+        </p>
+    </div>
+
+    <script>
+        document.getElementById("loginForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const message = document.getElementById("loginMessage");
+
+            try {
+                const response = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    message.textContent = data.message || "Login failed";
+                    return;
+                }
+
+                sessionStorage.setItem("token", data.token);
+                sessionStorage.setItem("user", JSON.stringify(data.user));
+
+                if (data.user.role === "buyer") {
+                    window.location.href = "buyer-dashboard.html";
+                } else if (data.user.role === "supplier") {
+                    window.location.href = "seller-dashboard.html";
+                } else {
+                    message.textContent = "Unsupported account role";
+                }
+
+            } catch (error) {
+                message.textContent = "Unable to connect to server";
+            }
+        });
+    </script>
+
+</body>
+</html>

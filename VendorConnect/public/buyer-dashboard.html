@@ -1,0 +1,325 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buyer Dashboard | VendorConnect</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .buyer-container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .buyer-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 22px;
+            margin-top: 30px;
+        }
+
+        .buyer-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .buyer-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .buyer-card h3 {
+            color: #254f80;
+            margin-bottom: 10px;
+        }
+
+        .buyer-card p {
+            color: #64748b;
+        }
+        .quotation-card {
+    background: white;
+    padding: 22px;
+    margin: 15px 0;
+    border-radius: 10px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+    border-left: 5px solid #244b80;
+}
+
+.quotation-card h3 {
+    color: #244b80;
+    margin-top: 0;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-accepted {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+    </style>
+</head>
+
+<body>
+
+<header class="dashboard-header">
+    <h1>VendorConnect</h1>
+    <button onclick="logout()">Logout</button>
+</header>
+
+<main class="buyer-container">
+
+    <h2>Buyer Dashboard</h2>
+    <p id="welcomeMessage">Loading your account...</p>
+
+    <section class="buyer-cards">
+
+    <div class="buyer-card"
+         onclick="location.href='marketplace.html'">
+        <h3>Explore Marketplace</h3>
+        <p>Browse products from suppliers.</p>
+    </div>
+
+    <div class="buyer-card"
+         onclick="document.getElementById('quotationsSection').scrollIntoView({behavior:'smooth'})">
+        <h3>My Quotations</h3>
+        <p>View your quotation requests.</p>
+    </div>
+
+    <div class="buyer-card"
+         onclick="document.getElementById('ordersSection').scrollIntoView({behavior:'smooth'})">
+        <h3>My Orders</h3>
+        <p>Track your purchases.</p>
+    </div>
+
+</section>
+
+    <section class="dashboard-card" id="quotationsSection" style="margin-top:25px;">
+    <h2>My Quotation Requests</h2>
+    <div id="buyerQuotationList">
+        Loading your quotation history...
+    </div>
+</section>
+<section class="dashboard-card" id="ordersSection" style="margin-top:25px;">
+    <h2>My Orders</h2>
+    <div id="buyerOrderList">
+        Loading your orders...
+    </div>
+</section>
+
+</main>
+
+<script>
+    const token = sessionStorage.getItem("token");
+
+   if (!token) {
+    window.location.href = "login.html";
+} else {
+    loadBuyerDashboard();
+    loadBuyerQuotations();
+    loadBuyerOrders();
+}
+
+    async function loadBuyerDashboard() {
+        try {
+            const response = await fetch("/api/buyer/dashboard", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                sessionStorage.clear();
+                window.location.href = "login.html";
+                return;
+            }
+
+            document.getElementById("welcomeMessage").textContent =
+                "Welcome, " + (data.user.name || "Buyer") + "!";
+
+        } catch (error) {
+            document.getElementById("welcomeMessage").textContent =
+                "Unable to load your account.";
+        }
+    }
+
+
+async function loadBuyerQuotations() {
+    const token = sessionStorage.getItem("token");
+    const container = document.getElementById("buyerQuotationList");
+
+    try {
+        const response = await fetch("/api/products/buyer/quotations", {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            container.textContent =
+                data.message || "Unable to load quotations.";
+            return;
+        }
+
+        if (data.requests.length === 0) {
+            container.textContent =
+                "You have not submitted any quotations yet.";
+            return;
+        }
+
+        container.innerHTML = data.requests.map(request => {
+            const status = String(request.status).toLowerCase();
+
+            return `
+                <div class="quotation-card">
+                    <h3>${escapeHTML(request.product_name)}</h3>
+
+                    <p><strong>Seller:</strong>
+                        ${escapeHTML(request.seller_name)}</p>
+
+                    <p><strong>Business:</strong>
+                        ${escapeHTML(request.seller_business || "Not provided")}</p>
+
+                    <p><strong>Quantity:</strong>
+                        ${Number(request.quantity)}</p>
+
+                    <p><strong>Status:</strong>
+    <span class="status-badge status-${status}">
+        ${escapeHTML(status.toUpperCase())}
+    </span>
+</p>
+
+${status === "accepted" ? `
+    <button onclick="placeOrder(${request.id})">
+        Place Order
+    </button>
+` : ""}
+                </div>
+            `;
+        }).join("");
+
+    } catch (error) {
+        console.error(error);
+        container.textContent = "Could not connect to the server.";
+    }
+}
+
+function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
+
+    function logout() {
+        sessionStorage.clear();
+        window.location.href = "login.html";
+    }
+    async function loadBuyerOrders() {
+    const token = sessionStorage.getItem("token");
+    const container = document.getElementById("buyerOrderList");
+
+    try {
+        const response = await fetch("/api/products/buyer/orders", {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            container.textContent = data.message || "Unable to load orders.";
+            return;
+        }
+
+        if (data.orders.length === 0) {
+            container.textContent = "You have no orders yet.";
+            return;
+        }
+
+        container.innerHTML = data.orders.map(order => `
+            <div class="quotation-card">
+                <h3>${escapeHTML(order.product_name)}</h3>
+                <p><strong>Seller:</strong> ${escapeHTML(order.seller_name)}</p>
+                <p><strong>Business:</strong> ${escapeHTML(order.seller_business || "Not provided")}</p>
+                <p><strong>Quantity:</strong> ${Number(order.quantity)}</p>
+                <p><strong>Total:</strong> ₹${Number(order.total_amount).toFixed(2)}</p>
+                <p><strong>Status:</strong> ${escapeHTML(order.status)}</p>
+            </div>
+        `).join("");
+
+    } catch (error) {
+        console.error(error);
+        container.textContent = "Could not connect to the server.";
+    }
+}
+
+
+async function placeOrder(quotationId) {
+    const token = sessionStorage.getItem("token");
+
+    if (!confirm("Are you sure you want to place this order?")) {
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            `/api/products/buyer/orders/from-quotation/${quotationId}`,
+            {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        alert(data.message || "Order request completed.");
+
+        if (response.ok) {
+            await loadBuyerOrders();
+            await loadBuyerQuotations();
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert("Unable to place order. Please try again.");
+    }
+}
+
+
+</script>
+
+</body>
+</html>

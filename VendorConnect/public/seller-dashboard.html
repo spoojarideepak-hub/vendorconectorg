@@ -1,0 +1,543 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorConnect | Seller Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        body {
+            margin: 0;
+            background: #f4f7fb;
+            font-family: Arial, sans-serif;
+            color: #26364a;
+        }
+
+        .dashboard-header {
+            background: #244b80;
+            color: white;
+            padding: 20px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dashboard-header h1 {
+            margin: 0;
+        }
+
+        .dashboard-header button {
+            background: white;
+            color: #244b80;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .dashboard-container {
+            max-width: 1100px;
+            margin: 35px auto;
+            padding: 0 20px;
+        }
+
+        .welcome {
+            margin-bottom: 25px;
+        }
+
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .dashboard-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+        }
+
+        .dashboard-card h3 {
+            color: #244b80;
+        }
+
+        .dashboard-card p {
+            color: #667085;
+        }
+
+
+/* Order status labels */
+.order-status {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.status-pending {
+    background: #fff0cc;
+    color: #946200;
+}
+
+.status-confirmed {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.status-shipped {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.status-delivered {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.status-cancelled {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.order-filters {
+    display: flex;
+    gap: 15px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.order-filters input,
+.order-filters select {
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    font-size: 15px;
+    flex: 1;
+    min-width: 220px;
+}
+
+.order-counts {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 15px 0;
+}
+
+.order-count {
+    background: #eef3f9;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+
+    </style>
+</head>
+
+<body>
+
+    <header class="dashboard-header">
+        <h1>VendorConnect</h1>
+        <button onclick="logout()">Logout</button>
+    </header>
+
+    <main class="dashboard-container">
+
+        <section class="welcome">
+            <h2>Seller Dashboard</h2>
+            <p id="welcomeMessage">Loading your account...</p>
+        </section>
+
+        <section class="dashboard-cards">
+
+            <div class="dashboard-card"
+             onclick="window.location.href='my-products.html'"
+             style="cursor:pointer;">
+             <h3>My Products</h3>
+             <p>Manage your listed products.</p>
+            </div>
+
+            <div class="dashboard-card" onclick="window.location.href='add-product.html'" style="cursor:pointer;">
+                 <h3>Add Product</h3>
+                <p>Add new products to your catalogue.</p>
+            </div>
+            <div class="dashboard-card">
+                <h3>Quotation Requests</h3>
+                <p>View requests from buyers.</p>
+            </div>
+
+            <div class="dashboard-card"
+     onclick="document.getElementById('ordersSection').scrollIntoView({behavior:'smooth'})"
+     style="cursor:pointer;">
+    <h3>Orders</h3>
+    <p>Track and manage your customer orders.</p>
+</div>
+
+        </section>
+        <section class="dashboard-card" id="quotationSection" style="margin-top: 25px;">
+    <h2>Quotation Requests</h2>
+    <div id="quotationList">
+        Loading quotation requests...
+    </div>
+</section>
+
+<section class="dashboard-card" id="ordersSection" style="margin-top: 25px;">
+    <h2>Customer Orders</h2>
+
+    <div class="order-filters">
+        <input
+            type="text"
+            id="orderSearch"
+            placeholder="Search by order ID or buyer name..."
+            oninput="filterSellerOrders()"
+        >
+
+        <select id="orderStatusFilter" onchange="filterSellerOrders()">
+            <option value="all">All Orders</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+        </select>
+    </div>
+
+    <div id="orderCounts" class="order-counts"></div>
+
+    <div id="sellerOrdersList">
+        Loading customer orders...
+    </div>
+</section>
+
+    </main>
+ 
+<script>
+    async function loadDashboard() {
+        const token = sessionStorage.getItem("token");
+
+        if (!token) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/seller/dashboard", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                sessionStorage.clear();
+                window.location.href = "login.html";
+                return;
+            }
+
+            const data = await response.json();
+            const user = JSON.parse(sessionStorage.getItem("user"));
+
+            document.getElementById("welcomeMessage").textContent =
+                `Welcome, ${user.name}! ${data.message}`;
+
+        } catch (error) {
+            document.getElementById("welcomeMessage").textContent =
+                "Unable to load dashboard.";
+        }
+    }
+
+    function logout() {
+        sessionStorage.clear();
+        window.location.href = "login.html";
+    }
+
+    function escapeHTML(value) {
+        return String(value ?? "").replace(/[&<>"']/g, character => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        })[character]);
+    }
+
+function formatOrderDate(dateValue) {
+    const date = new Date(dateValue);
+
+    if (isNaN(date.getTime())) {
+        return "Date unavailable";
+    }
+
+    return date.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+    });
+}
+
+
+    async function loadQuotations() {
+        const token = sessionStorage.getItem("token");
+        const container = document.getElementById("quotationList");
+
+        try {
+            const response = await fetch("/api/products/seller/quotations", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                container.textContent =
+                    data.message || "Unable to load quotation requests.";
+                return;
+            }
+
+            if (data.requests.length === 0) {
+                container.textContent = "No quotation requests received yet.";
+                return;
+            }
+
+            container.innerHTML = data.requests.map(request => `
+                <div class="dashboard-card" style="margin:15px 0;">
+                    <h3>${escapeHTML(request.product_name)}</h3>
+                    <p><strong>Buyer:</strong> ${escapeHTML(request.buyer_name)}</p>
+                    <p><strong>Email:</strong> ${escapeHTML(request.buyer_email)}</p>
+                    <p><strong>Quantity:</strong> ${request.quantity}</p>
+                    <p><strong>Message:</strong> ${escapeHTML(request.message || "No message")}</p>
+                    <p><strong>Status:</strong> ${escapeHTML(request.status)}</p>
+
+                    ${request.status === "pending" ? `
+                        <button onclick="updateQuotation(${request.id}, 'accepted')">Accept</button>
+                        <button onclick="updateQuotation(${request.id}, 'rejected')">Reject</button>
+                    ` : ""}
+                </div>
+            `).join("");
+
+        } catch (error) {
+            console.error(error);
+            container.textContent = "Could not connect to the server.";
+        }
+    }
+
+    async function updateQuotation(id, status) {
+        const token = sessionStorage.getItem("token");
+
+        try {
+            const response = await fetch(
+                `/api/products/seller/quotations/${id}`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status })
+                }
+            );
+
+            const data = await response.json();
+            alert(data.message || "Unable to update quotation.");
+
+            if (response.ok) {
+                loadQuotations();
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Could not connect to the server.");
+        }
+    }
+
+
+
+let sellerOrders = [];
+
+async function loadSellerOrders() {
+    const token = sessionStorage.getItem("token");
+    const container = document.getElementById("sellerOrdersList");
+
+    try {
+        const response = await fetch("/api/products/seller/orders", {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            container.textContent =
+                data.message || "Unable to load customer orders.";
+            return;
+        }
+
+        sellerOrders = data.orders || [];
+
+        renderOrderCounts();
+        filterSellerOrders();
+
+    } catch (error) {
+        console.error(error);
+        container.textContent = "Could not connect to the server.";
+    }
+}
+
+function renderOrderCounts() {
+    const counts = {
+        pending: 0,
+        confirmed: 0,
+        shipped: 0,
+        delivered: 0,
+        cancelled: 0
+    };
+
+    sellerOrders.forEach(order => {
+        const status = String(order.status).toLowerCase();
+
+        if (counts[status] !== undefined) {
+            counts[status]++;
+        }
+    });
+
+    document.getElementById("orderCounts").innerHTML = `
+        <span class="order-count">Total: ${sellerOrders.length}</span>
+        <span class="order-count">Pending: ${counts.pending}</span>
+        <span class="order-count">Confirmed: ${counts.confirmed}</span>
+        <span class="order-count">Shipped: ${counts.shipped}</span>
+        <span class="order-count">Delivered: ${counts.delivered}</span>
+        <span class="order-count">Cancelled: ${counts.cancelled}</span>
+    `;
+}
+
+function filterSellerOrders() {
+    const search = document.getElementById("orderSearch")
+        .value.toLowerCase().trim();
+
+    const selectedStatus = document.getElementById("orderStatusFilter")
+        .value.toLowerCase();
+
+    const filteredOrders = sellerOrders.filter(order => {
+        const matchesSearch =
+            String(order.id).includes(search) ||
+            String(order.buyer_name || "").toLowerCase().includes(search);
+
+        const matchesStatus =
+            selectedStatus === "all" ||
+            String(order.status).toLowerCase() === selectedStatus;
+
+        return matchesSearch && matchesStatus;
+    });
+
+    renderSellerOrders(filteredOrders);
+}
+
+function renderSellerOrders(orders) {
+    const container = document.getElementById("sellerOrdersList");
+
+    if (orders.length === 0) {
+        container.textContent = sellerOrders.length === 0
+            ? "No customer orders received yet."
+            : "No orders match your search or selected filter.";
+        return;
+    }
+
+    container.innerHTML = orders.map(order => {
+        let actionButtons = "";
+        const currentStatus = String(order.status).toLowerCase();
+
+        if (currentStatus === "pending") {
+            actionButtons = `
+                <button onclick="updateOrderStatus(${order.id}, 'confirmed')">
+                    Confirm Order
+                </button>
+                <button onclick="updateOrderStatus(${order.id}, 'cancelled')">
+                    Cancel Order
+                </button>
+            `;
+        }else if (currentStatus === "confirmed") {
+            actionButtons = `
+                <button onclick="updateOrderStatus(${order.id}, 'shipped')">
+                    Mark as Shipped
+                </button>
+                <button onclick="updateOrderStatus(${order.id}, 'cancelled')">
+                    Cancel Order
+                </button>
+            `;
+        } else if (currentStatus === "shipped") {
+            actionButtons = `
+                <button onclick="updateOrderStatus(${order.id}, 'delivered')">
+                    Mark as Delivered
+                </button>
+            `;
+        }
+
+        const status = String(order.status).toLowerCase();
+
+        return `
+            <div class="dashboard-card" style="margin:15px 0;">
+                <h3>Order #${order.id}</h3>
+                <p><strong>Product:</strong> ${escapeHTML(order.product_name)}</p>
+                <p><strong>Buyer:</strong> ${escapeHTML(order.buyer_name)}</p>
+                <p><strong>Email:</strong> ${escapeHTML(order.buyer_email)}</p>
+                <p><strong>Quantity:</strong> ${order.quantity}</p>
+                <p><strong>Total Amount:</strong> ₹${Number(order.total_amount).toFixed(2)}</p>
+                <p><strong>Order Date:</strong> ${escapeHTML(formatOrderDate(order.created_at))}</p>
+                <p>
+                    <strong>Status:</strong>
+                    <span class="order-status status-${escapeHTML(status)}">
+                        ${escapeHTML(status)}
+                    </span>
+                </p>
+                ${actionButtons}
+            </div>
+        `;
+    }).join("");
+}
+
+
+
+async function updateOrderStatus(id, status) {
+    const token = sessionStorage.getItem("token");
+
+    try {
+        const response = await fetch(`/api/products/seller/orders/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ status })
+        });
+
+        const data = await response.json();
+
+        alert(data.message || "Unable to update order.");
+
+        if (response.ok) {
+            loadSellerOrders();
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert("Could not connect to the server.");
+    }
+}
+
+loadDashboard();
+loadQuotations();
+loadSellerOrders();
+</script>
+
+</body>
+</html>
+   

@@ -1,0 +1,120 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorConnect - B2B Marketplace</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<header class="navbar">
+
+    <div class="logo">Vendor<span>Connect</span></div>
+
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="#categories">Categories</a>
+        <a href="#about">About Us</a>
+    </nav>
+
+    <div class="nav-buttons">
+        <a href="login.php" class="login">Login</a>
+        <a href="register.php" class="register">Join Now</a>
+    </div>
+
+</header>
+
+<section class="hero">
+
+    <h1>Connect Businesses.<br>
+        Discover Better Suppliers.</h1>
+
+    <p>
+        Find trusted suppliers, compare prices,
+        request quotations and simplify your purchasing.
+    </p>
+
+    <div class="search-box">
+        <input type="text" id="searchInput"
+        placeholder="Search products like Rice, Sugar, Oil">
+
+        <button onclick="searchProduct()">Search</button>
+    </div>
+
+    <p id="searchMessage"></p>
+
+    <a href="register.php" class="primary-btn">Get Started</a>
+
+</section>
+
+<section class="categories" id="categories">
+
+    <h2>Popular Product Categories</h2>
+    <p>Explore products from different suppliers.</p>
+
+    <div class="category-container">
+
+        <div class="category-card">
+            <div class="category-icon">🌾</div>
+            <h3>Grains & Rice</h3>
+            <p>Rice, wheat and pulses</p>
+        </div>
+
+        <div class="category-card">
+            <div class="category-icon">🛢️</div>
+            <h3>Oils & Spices</h3>
+            <p>Cooking oils and spices</p>
+        </div>
+
+        <div class="category-card">
+            <div class="category-icon">🍬</div>
+            <h3>Sugar & Dry Fruits</h3>
+            <p>Sugar, nuts and sweets</p>
+        </div>
+
+        <div class="category-card">
+            <div class="category-icon">📦</div>
+            <h3>Packaging</h3>
+            <p>Boxes and packaging materials</p>
+        </div>
+
+    </div>
+
+</section>
+
+<section class="about" id="about">
+
+    <h2>Why Choose VendorConnect?</h2>
+
+    <div class="features">
+
+        <div>
+            <h3>Trusted Suppliers</h3>
+            <p>Discover registered suppliers.</p>
+        </div>
+
+        <div>
+            <h3>Compare Prices</h3>
+            <p>Compare quotations before purchasing.</p>
+        </div>
+
+        <div>
+            <h3>Easy Procurement</h3>
+            <p>Manage requests and orders easily.</p>
+        </div>
+
+    </div>
+
+</section>
+
+<footer>
+    <p>© 2026 VendorConnect. All Rights Reserved.</p>
+</footer>
+
+<script src="js/script.js"></script>
+
+</body>
+</html>
